@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Absensi Kantor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 min-h-screen text-slate-100 flex flex-col justify-between items-center p-6">
+
+  <!-- Header -->
+  <div class="text-center mt-4">
+    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-400 text-xs font-semibold mb-3">
+      <i class="fa-solid fa-building-circle-check"></i>
+      <span>KIOSK CHECK-IN KANTOR</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Scan QR Code untuk Absensi</h1>
+    <p class="text-slate-400 text-sm mt-1">Arahkan kamera ponsel Anda ke kode di bawah untuk mencatat kehadiran</p>
+  </div>
+
+  <!-- QR Code Card -->
+  <div class="bg-white text-slate-900 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full my-6 border border-slate-100">
+    <div id="qrLoading" class="py-16 text-slate-400 flex flex-col items-center">
+      <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-600 mb-3"></i>
+      <span class="text-xs font-medium">Membuat QR Code dinamis...</span>
+    </div>
+    
+    <img id="qrImage" src="" alt="QR Code Absensi" class="w-64 h-64 rounded-2xl shadow-inner border border-slate-100 hidden">
+
+    <div class="mt-4 text-center">
+      <div id="liveClock" class="text-2xl font-bold font-mono text-slate-800 tracking-wider">00:00:00</div>
+      <p id="liveDate" class="text-xs text-slate-500 mt-0.5">Memuat...</p>
+    </div>
+
+    <div class="w-full mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+      <span class="truncate max-w-[200px]" id="targetUrl">http://...</span>
+      <a id="directLink" href="/index.html" class="text-blue-600 font-bold hover:underline">Buka Form</a>
+    </div>
+  </div>
+
+  <!-- Instructions & Navigation -->
+  <div class="text-center max-w-md w-full">
+    <div class="grid grid-cols-3 gap-3 text-center mb-6">
+      <div class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/50">
+        <div class="text-blue-400 mb-1"><i class="fa-solid fa-camera"></i></div>
+        <div class="text-[11px] text-slate-300 font-medium">1. Buka Kamera</div>
+      </div>
+      <div class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/50">
+        <div class="text-indigo-400 mb-1"><i class="fa-solid fa-keyboard"></i></div>
+        <div class="text-[11px] text-slate-300 font-medium">2. Isi Nama & Divisi</div>
+      </div>
+      <div class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/50">
+        <div class="text-emerald-400 mb-1"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="text-[11px] text-slate-300 font-medium">3. Terabsen Otomatis</div>
+      </div>
+    </div>
+
+    <div class="flex justify-center space-x-6 text-xs text-slate-400">
+      <a href="/index.html" class="hover:text-blue-400 transition"><i class="fa-solid fa-user-pen mr-1"></i> Form Absensi Manual</a>
+      <a href="/admin.html" class="hover:text-blue-400 transition"><i class="fa-solid fa-chart-line mr-1"></i> Dashboard Admin</a>
+    </div>
+  </div>
+
+  <footer class="text-slate-500 text-xs mt-6">
+    Sistem Absensi Otomatis &copy; 2026
+  </footer>
+
+  <script>
+    async function loadQRCode() {
+      try {
+        const res = await fetch('/api/qrcode');
+        const data = await res.json();
+        if (data.qrDataUrl) {
+          const img = document.getElementById('qrImage');
+          img.src = data.qrDataUrl;
+          img.classList.remove('hidden');
+          document.getElementById('qrLoading').classList.add('hidden');
+          document.getElementById('targetUrl').textContent = data.targetUrl;
+          document.getElementById('directLink').href = data.targetUrl;
+        }
+      } catch (err) {
+        console.error('Failed to load QR:', err);
+      }
+    }
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('liveClock').textContent = now.toLocaleTimeString('id-ID');
+      document.getElementById('liveDate').textContent = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+    loadQRCode();
+  </script>
+</body>
+</html>

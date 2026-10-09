@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Admin - Sistem Absensi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center p-4">
+
+  <div class="max-w-md w-full bg-slate-800 border border-slate-700/80 rounded-3xl p-8 shadow-2xl text-slate-100">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+        <i class="fa-solid fa-shield-halved text-2xl"></i>
+      </div>
+      <h1 class="text-2xl font-bold tracking-tight text-white">Login Dashboard Admin</h1>
+      <p class="text-sm text-slate-400 mt-1">Akses panel kontrol bot, grafik performa, dan rekap Excel</p>
+    </div>
+
+    <div id="errorAlert" class="hidden mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center space-x-2">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span id="errorMessage">Kata sandi salah!</span>
+    </div>
+
+    <form id="loginForm" class="space-y-5">
+      <div>
+        <label for="password" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Kata Sandi Admin
+        </label>
+        <div class="relative">
+          <input 
+            type="password" 
+            id="password" 
+            required 
+            placeholder="Masukkan kata sandi..."
+            class="w-full pl-4 pr-10 py-3 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 text-sm"
+          >
+          <button 
+            type="button" 
+            id="togglePw"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white"
+          >
+            <i class="fa-regular fa-eye"></i>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2">Default: <code class="bg-slate-900 px-1 py-0.5 rounded text-blue-400 font-mono">admin123</code></p>
+      </div>
+
+      <button 
+        type="submit" 
+        id="submitBtn"
+        class="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition transform active:scale-[0.98] flex items-center justify-center space-x-2"
+      >
+        <i class="fa-solid fa-right-to-bracket"></i>
+        <span>Masuk ke Dashboard</span>
+      </button>
+    </form>
+
+    <div class="mt-8 pt-6 border-t border-slate-700/60 text-center text-xs text-slate-400">
+      <a href="/index.html" class="hover:text-blue-400 flex items-center justify-center space-x-1">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span>Kembali ke Halaman Absensi Offline</span>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Check if already authenticated
+    fetch('/api/admin/check')
+      .then(res => res.json())
+      .then(data => {
+        if (data.authenticated) window.location.href = '/admin.html';
+      });
+
+    const form = document.getElementById('loginForm');
+    const pwInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('togglePw');
+    const errorAlert = document.getElementById('errorAlert');
+    const errorMsg = document.getElementById('errorMessage');
+
+    toggleBtn.addEventListener('click', () => {
+      const type = pwInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      pwInput.setAttribute('type', type);
+      toggleBtn.innerHTML = type === 'password' ? '<i class="fa-regular fa-eye"></i>' : '<i class="fa-regular fa-eye-slash"></i>';
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorAlert.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwInput.value })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          window.location.href = '/admin.html';
+        } else {
+          errorMsg.textContent = data.error || 'Kata sandi tidak valid!';
+          errorAlert.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorMsg.textContent = 'Gagal menghubungi server.';
+        errorAlert.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

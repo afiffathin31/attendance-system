@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard & Analytics - Sistem Absensi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .chart-container { position: relative; height: 260px; width: 100%; }
+    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <!-- Top Navbar -->
+  <nav class="bg-slate-900 text-white shadow-lg sticky top-0 z-40 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo & Brand -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
+            <i class="fa-solid fa-chart-column text-lg"></i>
+          </div>
+          <div>
+            <h1 class="font-extrabold text-base tracking-wide flex items-center space-x-2">
+              <span>ABSENSI ANALYTICS</span>
+              <span class="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2 py-0.5 rounded-full font-bold">PRO</span>
+            </h1>
+            <p class="text-xs text-slate-400">Hybrid Zoom / Meet Bot & Offline Attendance</p>
+          </div>
+        </div>
+
+        <!-- Quick Action Buttons -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <!-- Excel Download -->
+          <a 
+            href="/api/attendance/export-excel" 
+            class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-md shadow-emerald-700/20"
+            title="Download Master File Excel (.xlsx) dengan Sheet Lengkap"
+          >
+            <i class="fa-solid fa-file-excel text-sm"></i>
+            <span class="hidden sm:inline">Unduh Master Excel</span>
+          </a>
+
+          <!-- QR Code Page -->
+          <a 
+            href="/qr.html" 
+            target="_blank" 
+            class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-700"
+            title="Tampilkan Layar QR Code Kantor"
+          >
+            <i class="fa-solid fa-qrcode"></i>
+            <span class="hidden md:inline">Kiosk QR</span>
+          </a>
+
+          <!-- Settings Modal Trigger -->
+          <button 
+            id="openSettingsBtn"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl text-xs transition border border-slate-700"
+            title="Pengaturan Jadwal & Toleransi"
+          >
+            <i class="fa-solid fa-sliders text-sm"></i>
+          </button>
+
+          <!-- Logout -->
+          <button 
+            id="logoutBtn"
+            class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 p-2 rounded-xl text-xs transition border border-rose-500/30"
+            title="Logout"
+          >
+            <i class="fa-solid fa-right-from-bracket text-sm"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Body -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- KPI Summary Row -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      
+      <!-- Total Check-in -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider">Total Hadir</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <i class="fa-solid fa-users text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-2">
+          <div id="statTotal" class="text-3xl font-extrabold text-slate-900">0</div>
+          <p class="text-xs text-slate-400 mt-1">Kehadiran tercatat</p>
+        </div>
+      </div>
+
+      <!-- Tepat Waktu -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Tepat Waktu</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i class="fa-solid fa-circle-check text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-2">
+          <div id="statOnTime" class="text-3xl font-extrabold text-emerald-600">0</div>
+          <p id="statOnTimeRate" class="text-xs text-emerald-700 font-semibold mt-1">0% dari total</p>
+        </div>
+      </div>
+
+      <!-- Terlambat -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Terlambat</span>
+          <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <i class="fa-solid fa-clock text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-2">
+          <div id="statLate" class="text-3xl font-extrabold text-rose-600">0</div>
+          <p id="statLateRate" class="text-xs text-rose-700 font-semibold mt-1">0% dari total</p>
+        </div>
+      </div>
+
+      <!-- Avg Keterlambatan -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider">Rata-rata Telat</span>
+          <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <i class="fa-solid fa-hourglass-half text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-2">
+          <div id="statAvgLate" class="text-3xl font-extrabold text-slate-900">0 <span class="text-sm font-normal text-slate-500">m</span></div>
+          <p class="text-xs text-slate-400 mt-1">Bagi yang terlambat</p>
+        </div>
+      </div>
+
+      <!-- Online vs Offline -->
+      <div class="col-span-2 lg:col-span-1 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider">Metode Presensi</span>
+          <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+            <i class="fa-solid fa-video text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <div>
+            <div class="text-xs text-slate-500">Online</div>
+            <div id="statOnline" class="text-xl font-bold text-indigo-600">0</div>
+          </div>
+          <div class="text-slate-300 font-bold">/</div>
+          <div>
+            <div class="text-xs text-slate-500">Offline</div>
+            <div id="statOffline" class="text-xl font-bold text-slate-700">0</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Quick Seed Demo Tool Banner (if empty) -->
+    <div id="seedBanner" class="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0">
+      <div class="flex items-center space-x-3 text-center sm:text-left">
+        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-blue-300 shrink-0">
+          <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+        </div>
+        <div>
+          <h2 class="font-bold text-sm">Ingin melihat simulasi data grafik performa langsung?</h2>
+          <p class="text-xs text-blue-200 mt-0.5">Suntikkan 15 data contoh riwayat absensi online Zoom/Meet dan offline antar departemen untuk menguji diagram dan file Excel.</p>
+        </div>
+      </div>
+      <button 
+        id="seedBtn" 
+        class="bg-blue-500 hover:bg-blue-400 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow flex items-center space-x-1.5 shrink-0"
+      >
+        <i class="fa-solid fa-database"></i>
+        <span>Inject Data Simulasi</span>
+      </button>
+    </div>
+
+    <!-- ANALYTICS CHARTS SECTION (2x2 Grid) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Chart 1: Rasio Ketepatan Waktu Keseluruhan (Donut Chart) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Rasio Kehadiran Keseluruhan</h3>
+            <p class="text-xs text-slate-500">Persentase kedatangan tepat waktu vs keterlambatan</p>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">Overall Performance</span>
+        </div>
+        <div class="chart-container flex items-center justify-center">
+          <canvas id="overallDonutChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Performa Kedatangan per Departemen (Bar Chart) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Performa Berdasarkan Departemen</h3>
+            <p class="text-xs text-slate-500">Perbandingan jumlah tepat waktu dan terlambat per divisi</p>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">Department Breakdown</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="deptBarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Pembanding Performa Individu (Horizontal Bar Leaderboard) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Pembanding Performa Individu</h3>
+            <p class="text-xs text-slate-500">Tingkat ketepatan waktu (%) masing-masing karyawan</p>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold">Leaderboard</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="individualBarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 4: Tren Kedatangan Harian (Line Chart) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Tren Kedatangan dari Waktu ke Waktu</h3>
+            <p class="text-xs text-slate-500">Grafik fluktuasi kedatangan harian</p>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">Historical Trend</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="trendLineChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ONLINE MEETING INTEGRATION SECTION (Google Meet & Zoom Extension) -->
+    <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-slate-100 rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800">
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800/80 gap-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xl">
+            <i class="fa-solid fa-puzzle-piece"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+              <span>Integrasi Rapat Online (Google Meet & Zoom)</span>
+              <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] px-2.5 py-0.5 rounded-full font-bold">1-Klik Otomatis</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Merekap seluruh kehadiran peserta rapat secara instan langsung dari layar rapat Anda ke file Excel.</p>
+          </div>
+        </div>
+
+        <button 
+          onclick="document.getElementById('extensionModal').classList.remove('hidden')" 
+          class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center space-x-2 shadow-lg shadow-blue-600/30 shrink-0"
+        >
+          <i class="fa-solid fa-download"></i>
+          <span>Panduan Pasang Ekstensi (10 Detik)</span>
+        </button>
+      </div>
+
+      <!-- Quick Text Paste Import Tool -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+        <div class="lg:col-span-5 space-y-3">
+          <div class="p-4 bg-slate-900/80 rounded-2xl border border-slate-800 text-xs">
+            <h4 class="font-bold text-white mb-2 flex items-center space-x-2">
+              <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              <span>Ekstensi Browser Aktif</span>
+            </h4>
+            <p class="text-slate-400 leading-relaxed text-[11px]">
+              Tombol <strong class="text-white">"⚡ Rekap Kehadiran"</strong> otomatis muncul melayang di layar Google Meet dan Zoom Anda. Cukup 1 kali klik, seluruh peserta hadir langsung terserap otomatis ke sistem.
+            </p>
+            <div class="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Status Server:</span>
+              <span class="text-emerald-400 font-bold flex items-center space-x-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Port 3000 Terhubung</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold uppercase tracking-wider text-slate-400">
+              📋 Input Cadangan: Tempel (Paste) Daftar Nama Rapat
+            </span>
+          </div>
+          <textarea 
+            id="batchPasteInput" 
+            rows="3" 
+            placeholder="[IT] Budi Santoso&#10;Finance - Siti Rahma&#10;Afif Fathin&#10;Anggi Sk69"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono custom-scroll"
+          ></textarea>
+          <button 
+            id="batchSyncBtn" 
+            class="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center justify-center space-x-2 shadow-md"
+          >
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Rekap Nama Tersebut ke Excel</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE RECORDS TABLE SECTION -->
+    <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80">
+      
+      <!-- Table Header & Controls -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Rekap Data Presensi Real-Time</h2>
+          <p class="text-xs text-slate-500 mt-1">Seluruh catatan kehadiran online maupun offline disinkronkan secara langsung ke file Excel master.</p>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button 
+            id="refreshTableBtn"
+            class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center space-x-1.5"
+          >
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Segarkan</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 my-6">
+        
+        <!-- Search -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Cari Nama / Divisi</label>
+          <input 
+            type="text" 
+            id="filterSearch" 
+            placeholder="Ketik nama..." 
+            class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-indigo-600"
+          >
+        </div>
+
+        <!-- Filter Departemen -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Departemen</label>
+          <select id="filterDept" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-indigo-600 bg-white">
+            <option value="ALL">Semua Departemen</option>
+          </select>
+        </div>
+
+        <!-- Filter Metode -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Metode Kehadiran</label>
+          <select id="filterType" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-indigo-600 bg-white">
+            <option value="ALL">Semua Metode</option>
+            <option value="ONLINE_ZOOM">Zoom Meeting</option>
+            <option value="ONLINE_MEET">Google Meet</option>
+            <option value="OFFLINE">Offline Kantor</option>
+          </select>
+        </div>
+
+        <!-- Filter Status -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Status Kehadiran</label>
+          <select id="filterStatus" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-indigo-600 bg-white">
+            <option value="ALL">Semua Status</option>
+            <option value="ON_TIME">Tepat Waktu</option>
+            <option value="LATE">Terlambat</option>
+          </select>
+        </div>
+
+        <!-- Filter Tanggal -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Tanggal</label>
+          <input 
+            type="date" 
+            id="filterDate" 
+            class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-indigo-600"
+          >
+        </div>
+
+      </div>
+
+      <!-- Table Container -->
+      <div class="overflow-x-auto rounded-2xl border border-slate-200/80 custom-scroll">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-50 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th class="py-3.5 px-4">No</th>
+              <th class="py-3.5 px-4">Waktu Masuk</th>
+              <th class="py-3.5 px-4">Nama Lengkap</th>
+              <th class="py-3.5 px-4">Departemen</th>
+              <th class="py-3.5 px-4">Metode</th>
+              <th class="py-3.5 px-4">Sesi / Acara</th>
+              <th class="py-3.5 px-4 text-center">Status</th>
+              <th class="py-3.5 px-4 text-center">Keterlambatan</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTableBody" class="divide-y divide-slate-100">
+            <tr>
+              <td colspan="8" class="text-center py-10 text-slate-400">
+                <i class="fa-solid fa-circle-notch fa-spin text-xl mb-2"></i>
+                <div>Memuat data presensi...</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- EXTENSION GUIDE MODAL -->
+  <div id="extensionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scroll">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+        <h3 class="font-bold text-slate-900 text-lg flex items-center space-x-2">
+          <i class="fa-solid fa-puzzle-piece text-blue-600"></i>
+          <span>Pasang Ekstensi Chrome (10 Detik)</span>
+        </h3>
+        <button onclick="document.getElementById('extensionModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-600 leading-relaxed">
+        <p class="font-semibold text-slate-800 text-sm">
+          Solusi terbaik tanpa bot dan 100% anti-blokir oleh Google Meet / Zoom!
+        </p>
+
+        <div class="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-blue-900 space-y-2">
+          <div class="font-bold">Langkah Pemasangan:</div>
+          <ol class="list-decimal pl-4 space-y-1.5 font-medium">
+            <li>Buka tab baru di browser Anda dan ketik: <code class="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono font-bold text-blue-700">chrome://extensions</code> <em>(atau edge://extensions jika memakai Edge)</em>.</li>
+            <li>Di pojok kanan atas, <strong>aktifkan saklar "Developer mode" (Mode Pengembang)</strong>.</li>
+            <li>Di pojok kiri atas, klik tombol <strong>"Load unpacked" (Muat yang belum dibongkar)</strong>.</li>
+            <li>Arahkan dan pilih folder berikut di komputer Anda:
+              <div class="mt-1 p-2 bg-slate-900 text-slate-200 rounded-lg font-mono text-[11px] select-all break-all">
+                C:\Users\Apip\.gemini\antigravity\scratch\attendance-system\extension
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2">
+          <div class="font-bold text-slate-800">Cara Pakai saat Rapat:</div>
+          <p>Buka Google Meet atau Zoom seperti biasa. Widget <strong>"📋 Absensi Rapat"</strong> akan otomatis melayang di layar rapat. Cukup klik tombol <strong>"⚡ Rekap Kehadiran Sekarang"</strong>, dan semua peserta yang ada di layar rapat langsung tercatat ke Excel!</p>
+        </div>
+
+        <div class="pt-2 flex justify-end">
+          <button onclick="document.getElementById('extensionModal').classList.add('hidden')" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs">
+            Saya Mengerti
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+        <h3 class="font-bold text-slate-900 text-lg flex items-center space-x-2">
+          <i class="fa-solid fa-sliders text-indigo-600"></i>
+          <span>Pengaturan Sistem</span>
+        </h3>
+        <button id="closeSettingsBtn" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="settingsForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+            Jam Masuk Kantor Standar
+          </label>
+          <input 
+            type="time" 
+            id="settingOfficeTime" 
+            required
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-indigo-600"
+          >
+          <p class="text-[11px] text-slate-400 mt-1">Digunakan untuk menghitung on-time / telat pada absensi offline.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+            Toleransi Keterlambatan Kantor (Menit)
+          </label>
+          <input 
+            type="number" 
+            id="settingTolerance" 
+            required 
+            min="0" 
+            max="120"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-indigo-600"
+          >
+          <p class="text-[11px] text-slate-400 mt-1">Lewat dari waktu ini peserta dihitung terlambat.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+            Ubah Password Admin (Opsional)
+          </label>
+          <input 
+            type="password" 
+            id="settingPassword" 
+            placeholder="Biarkan kosong jika tidak diubah"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-indigo-600"
+          >
+        </div>
+
+        <div class="pt-3 flex space-x-3">
+          <button 
+            type="submit" 
+            class="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition"
+          >
+            Simpan Perubahan
+          </button>
+        </div>
+      </form>
+
+      <div class="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-xs text-slate-500">Reset Seluruh Database:</span>
+        <button 
+          id="clearAllDataBtn" 
+          class="text-xs text-rose-600 hover:text-rose-700 font-bold hover:underline"
+        >
+          Bersihkan Data
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="text-center py-6 text-xs text-slate-400 border-t border-slate-200 bg-white mt-12">
+    Sistem Absensi Otomatis &copy; 2026 • Real-time Excel & Meeting Bot Sync
+  </footer>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // State & Chart instances
+    let charts = {
+      donut: null,
+      deptBar: null,
+      individualBar: null,
+      trendLine: null
+    };
+
+    // Check Auth
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/admin/check');
+        const data = await res.json();
+        if (!data.authenticated) {
+          window.location.href = '/login.html';
+        }
+      } catch (err) {
+        window.location.href = '/login.html';
+      }
+    }
+    checkAuth();
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/admin/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    // Load Departments dropdown
+    async function loadDepartments() {
+      try {
+        const res = await fetch('/api/attendance/departments');
+        const data = await res.json();
+        const select = document.getElementById('filterDept');
+        select.innerHTML = '<option value="ALL">Semua Departemen</option>';
+        (data.departments || []).forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d;
+          opt.textContent = d;
+          select.appendChild(opt);
+        });
+      } catch (e) {}
+    }
+
+    // Load Analytics & Update Charts
+    async function fetchAnalytics() {
+      try {
+        const dept = document.getElementById('filterDept').value;
+        const date = document.getElementById('filterDate').value;
+        const query = new URLSearchParams();
+        if (dept && dept !== 'ALL') query.append('department', dept);
+        if (date) query.append('date', date);
+
+        const res = await fetch(`/api/attendance/analytics?${query.toString()}`);
+        const data = await res.json();
+
+        // Update KPI Counters
+        document.getElementById('statTotal').textContent = data.summary.total;
+        document.getElementById('statOnTime').textContent = data.summary.totalOnTime;
+        document.getElementById('statOnTimeRate').textContent = `${data.summary.onTimeRate}% dari total`;
+        document.getElementById('statLate').textContent = data.summary.totalLate;
+        document.getElementById('statLateRate').textContent = `${data.summary.lateRate}% dari total`;
+        document.getElementById('statAvgLate').innerHTML = `${data.summary.avgLateMinutes} <span class="text-sm font-normal text-slate-500">m</span>`;
+        document.getElementById('statOnline').textContent = data.summary.totalOnline;
+        document.getElementById('statOffline').textContent = data.summary.totalOffline;
+
+        // Toggle seed banner
+        const seedBanner = document.getElementById('seedBanner');
+        if (data.summary.total > 0) {
+          seedBanner.classList.add('hidden');
+        } else {
+          seedBanner.classList.remove('hidden');
+        }
+
+        renderDonutChart(data.summary);
+        renderDeptBarChart(data.departments);
+        renderIndividualBarChart(data.individuals);
+        renderTrendLineChart(data.trends);
+      } catch (err) {
+        console.error('Failed to fetch analytics:', err);
+      }
+    }
+
+    // Chart 1: Donut Chart
+    function renderDonutChart(summary) {
+      const ctx = document.getElementById('overallDonutChart').getContext('2d');
+      if (charts.donut) charts.donut.destroy();
+
+      const total = summary.total || 0;
+      const onTime = summary.totalOnTime || 0;
+      const late = summary.totalLate || 0;
+
+      charts.donut = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Tepat Waktu', 'Terlambat'],
+          datasets: [{
+            data: total === 0 ? [1, 0] : [onTime, late],
+            backgroundColor: total === 0 ? ['#E2E8F0', '#CBD5E1'] : ['#10B981', '#EF4444'],
+            borderWidth: 2,
+            borderColor: '#FFFFFF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Plus Jakarta Sans', size: 12 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.label}: ${ctx.raw} (${total > 0 ? Math.round((ctx.raw / total) * 100) : 0}%)`
+              }
+            }
+          },
+          cutout: '72%'
+        }
+      });
+    }
+
+    // Chart 2: Department Bar Chart
+    function renderDeptBarChart(deptList) {
+      const ctx = document.getElementById('deptBarChart').getContext('2d');
+      if (charts.deptBar) charts.deptBar.destroy();
+
+      const labels = deptList.map(d => d.department);
+      const onTimeData = deptList.map(d => d.onTime);
+      const lateData = deptList.map(d => d.late);
+
+      charts.deptBar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.length ? labels : ['Belum ada data'],
+          datasets: [
+            {
+              label: 'Tepat Waktu',
+              data: onTimeData.length ? onTimeData : [0],
+              backgroundColor: '#10B981',
+              borderRadius: 6
+            },
+            {
+              label: 'Terlambat',
+              data: lateData.length ? lateData : [0],
+              backgroundColor: '#EF4444',
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true, grid: { display: false } },
+            y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Plus Jakarta Sans', size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // Chart 3: Individual Leaderboard Bar Chart
+    function renderIndividualBarChart(individuals) {
+      const ctx = document.getElementById('individualBarChart').getContext('2d');
+      if (charts.individualBar) charts.individualBar.destroy();
+
+      // Top 7 individuals
+      const topInd = individuals.slice(0, 7);
+      const labels = topInd.map(i => `${i.name} (${i.department})`);
+      const rates = topInd.map(i => i.onTimeRate);
+
+      charts.individualBar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.length ? labels : ['Belum ada data'],
+          datasets: [{
+            label: '% Ketepatan Waktu',
+            data: rates.length ? rates : [0],
+            backgroundColor: '#4F46E5',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { max: 100, beginAtZero: true, ticks: { callback: v => `${v}%` } },
+            y: { grid: { display: false } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` Ketepatan Waktu: ${ctx.raw}%`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Chart 4: Daily Trends Line Chart
+    function renderTrendLineChart(trends) {
+      const ctx = document.getElementById('trendLineChart').getContext('2d');
+      if (charts.trendLine) charts.trendLine.destroy();
+
+      const labels = trends.map(t => t.date);
+      const onTimeData = trends.map(t => t.onTime);
+      const lateData = trends.map(t => t.late);
+
+      charts.trendLine = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels.length ? labels : ['Hari ini'],
+          datasets: [
+            {
+              label: 'Tepat Waktu',
+              data: onTimeData.length ? onTimeData : [0],
+              borderColor: '#10B981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: 'Terlambat',
+              data: lateData.length ? lateData : [0],
+              borderColor: '#EF4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              tension: 0.3,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } },
+            x: { grid: { display: false } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Plus Jakarta Sans', size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // Load Attendance Records Table
+    async function fetchRecords() {
+      const search = document.getElementById('filterSearch').value;
+      const dept = document.getElementById('filterDept').value;
+      const type = document.getElementById('filterType').value;
+      const status = document.getElementById('filterStatus').value;
+      const date = document.getElementById('filterDate').value;
+
+      const query = new URLSearchParams();
+      if (search) query.append('search', search);
+      if (dept && dept !== 'ALL') query.append('department', dept);
+      if (type && type !== 'ALL') query.append('type', type);
+      if (status && status !== 'ALL') query.append('status', status);
+      if (date) query.append('date', date);
+
+      try {
+        const res = await fetch(`/api/attendance/records?${query.toString()}`);
+        const data = await res.json();
+        const tbody = document.getElementById('recordsTableBody');
+
+        if (!data.records || data.records.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="8" class="text-center py-12 text-slate-400">
+                <i class="fa-regular fa-folder-open text-3xl mb-2 block"></i>
+                <div class="text-sm font-semibold">Tidak ada catatan presensi yang sesuai.</div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = data.records.map((r, idx) => {
+          const isLate = r.status === 'LATE';
+          let methodBadge = '';
+          if (r.type === 'ONLINE_ZOOM') {
+            methodBadge = `<span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-200"><i class="fa-solid fa-video text-[10px]"></i><span>Zoom</span></span>`;
+          } else if (r.type === 'ONLINE_MEET') {
+            methodBadge = `<span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200"><i class="fa-solid fa-chalkboard-user text-[10px]"></i><span>Meet</span></span>`;
+          } else {
+            methodBadge = `<span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200"><i class="fa-solid fa-building text-[10px]"></i><span>Offline</span></span>`;
+          }
+
+          return `
+            <tr class="hover:bg-slate-50/80 transition">
+              <td class="py-3 px-4 font-mono text-slate-400">${idx + 1}</td>
+              <td class="py-3 px-4 font-medium text-slate-800">
+                <div class="font-bold">${r.time}</div>
+                <div class="text-[10px] text-slate-400">${r.date}</div>
+              </td>
+              <td class="py-3 px-4 font-bold text-slate-900">${r.name}</td>
+              <td class="py-3 px-4 font-medium text-slate-700">${r.department}</td>
+              <td class="py-3 px-4">${methodBadge}</td>
+              <td class="py-3 px-4 text-slate-600">${r.sessionName}</td>
+              <td class="py-3 px-4 text-center">
+                <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  isLate ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                }">
+                  <i class="fa-solid ${isLate ? 'fa-triangle-exclamation' : 'fa-circle-check'} text-[10px]"></i>
+                  <span>${isLate ? 'TERLAMBAT' : 'TEPAT WAKTU'}</span>
+                </span>
+              </td>
+              <td class="py-3 px-4 text-center font-semibold ${isLate ? 'text-rose-600' : 'text-slate-400'}">
+                ${isLate ? `+${r.lateMinutes} menit` : '-'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to fetch records:', err);
+      }
+    }
+
+    // Refresh all data
+    function refreshAll() {
+      fetchAnalytics();
+      fetchRecords();
+    }
+
+    // Filters event listeners
+    ['filterSearch', 'filterDept', 'filterType', 'filterStatus', 'filterDate'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => {
+        fetchAnalytics();
+        fetchRecords();
+      });
+      if (id === 'filterSearch') {
+        document.getElementById(id).addEventListener('input', fetchRecords);
+      }
+    });
+
+    document.getElementById('refreshTableBtn').addEventListener('click', refreshAll);
+
+    // Seed Sample Data Button
+    document.getElementById('seedBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('seedBtn');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Menyuntikkan...`;
+
+      try {
+        const res = await fetch('/api/attendance/seed-sample', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          alert('Data simulasi berhasil diinjeksikan! Master file Excel telah diperbarui otomatis.');
+          refreshAll();
+        }
+      } catch (e) {
+        alert('Gagal menyuntikkan sample data.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-database"></i> <span>Inject Data Simulasi</span>`;
+      }
+    });
+
+    // ------------------------------------------------------------------------
+    // IN-MEETING ONLINE BATCH SYNC LOGIC
+    // ------------------------------------------------------------------------
+    document.getElementById('batchSyncBtn').addEventListener('click', async () => {
+      const textarea = document.getElementById('batchPasteInput');
+      const text = textarea.value.trim();
+      if (!text) {
+        alert('Silakan tempel (paste) daftar nama peserta terlebih dahulu!');
+        return;
+      }
+
+      const now = new Date();
+      const scheduledStartTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const btn = document.getElementById('batchSyncBtn');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Memproses...`;
+
+      try {
+        const res = await fetch('/api/bot/batch-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            participants: text,
+            sessionName: 'Online Meeting',
+            scheduledStartTime,
+            toleranceMinutes: 15,
+            platform: 'GOOGLE_MEET'
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message);
+          textarea.value = '';
+          refreshAll();
+        } else {
+          alert(data.error || 'Gagal memproses daftar peserta.');
+        }
+      } catch (err) {
+        alert('Gagal menghubungi server.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> <span>Rekap Nama Tersebut ke Excel</span>`;
+      }
+    });
+
+    // ------------------------------------------------------------------------
+    // SETTINGS MODAL LOGIC
+    // ------------------------------------------------------------------------
+    const modal = document.getElementById('settingsModal');
+    document.getElementById('openSettingsBtn').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/admin/settings');
+        const data = await res.json();
+        document.getElementById('settingOfficeTime').value = data.officeStartTime || '08:00';
+        document.getElementById('settingTolerance').value = data.toleranceMinutes || 15;
+      } catch (e) {}
+      modal.classList.remove('hidden');
+    });
+
+    document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const officeStartTime = document.getElementById('settingOfficeTime').value;
+      const toleranceMinutes = document.getElementById('settingTolerance').value;
+      const adminPassword = document.getElementById('settingPassword').value;
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ officeStartTime, toleranceMinutes, adminPassword })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Pengaturan berhasil diperbarui!');
+          modal.classList.add('hidden');
+        }
+      } catch (e) {
+        alert('Gagal menyimpan pengaturan.');
+      }
+    });
+
+    // Clear All Records Button
+    document.getElementById('clearAllDataBtn').addEventListener('click', async () => {
+      if (confirm('Apakah Anda yakin ingin menghapus seluruh data kehadiran? Tindakan ini tidak dapat dibatalkan.')) {
+        await fetch('/api/attendance/clear', { method: 'POST' });
+        alert('Semua data absensi berhasil dibersihkan.');
+        modal.classList.add('hidden');
+        refreshAll();
+      }
+    });
+
+    // Initial Startup
+    loadDepartments();
+    refreshAll();
+    // Poll records & analytics every 10 seconds for real-time live view
+    setInterval(() => {
+      fetchAnalytics();
+      fetchRecords();
+    }, 10000);
+  </script>
+</body>
+</html>

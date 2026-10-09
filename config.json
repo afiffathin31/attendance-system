@@ -1,0 +1,8 @@
+{
+  "port": 3000,
+  "adminPassword": "admin123",
+  "officeStartTime": "08:00",
+  "toleranceMinutes": 15,
+  "excelFilePath": "./data/master_absensi.xlsx",
+  "dbFilePath": "./data/attendance.json"
+}

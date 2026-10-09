@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Absensi Otomatis - Google Meet & Zoom",
+  "version": "1.0.0",
+  "description": "Rekap kehadiran peserta Google Meet & Zoom dengan 1 klik langsung ke Excel dan Dashboard Analitik.",
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://meet.google.com/*",
+    "https://*.zoom.us/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://*.zoom.us/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Absensi Rapat Online"
+  }
+}

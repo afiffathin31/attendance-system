@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Absensi Rapat</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 280px;
+      margin: 0;
+      padding: 16px;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: #10b981;
+      border-radius: 50%;
+    }
+    .desc {
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .input-group {
+      margin-bottom: 12px;
+    }
+    .input-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+    .input-text {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 11px;
+      font-family: monospace;
+      outline: none;
+    }
+    .input-text:focus {
+      border-color: #38bdf8;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      padding: 8px 12px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #1d4ed8; }
+    .btn-secondary {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      text-decoration: none;
+    }
+    .btn-secondary:hover { background: #334155; color: #fff; }
+    .toast {
+      display: none;
+      font-size: 10px;
+      color: #34d399;
+      text-align: center;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span style="font-size: 18px;">📋</span>
+    <span class="title">Absensi Rapat Online</span>
+  </div>
+
+  <div class="status-badge">
+    <span class="status-dot"></span>
+    <span id="connStatus">Mode Cloud Siap</span>
+  </div>
+
+  <p class="desc">
+    Tombol <strong>"⚡ Rekap Kehadiran"</strong> otomatis muncul saat Anda membuka <strong>Google Meet</strong> atau <strong>Zoom</strong>.
+  </p>
+
+  <div class="input-group">
+    <label class="input-label" for="cloudUrl">Google Apps Script Web App URL (Cloud):</label>
+    <input 
+      type="url" 
+      id="cloudUrl" 
+      placeholder="https://script.google.com/macros/s/.../exec" 
+      class="input-text"
+    >
+    <button id="saveUrlBtn" class="btn" style="margin-top: 6px; background: #059669;">
+      💾 Simpan URL Google Sheets
+    </button>
+    <div id="saveToast" class="toast">URL Cloud Berhasil Disimpan!</div>
+  </div>
+
+  <div style="font-size: 10px; color: #64748b; margin-top: 10px; border-top: 1px solid #334155; pt-2;">
+    100% Serverless & Cloud Google Sheets.
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

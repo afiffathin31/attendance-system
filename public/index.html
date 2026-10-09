@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absensi Kantor - Check-in Mandiri</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col justify-between">
+
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-lg">
+    <div class="max-w-xl mx-auto px-6 py-5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
+          <i class="fa-solid fa-fingerprint text-xl text-blue-300"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-wide">PORTAL ABSENSI</h1>
+          <p class="text-xs text-blue-200">Presensi Kehadiran Kantor & Rapat</p>
+        </div>
+      </div>
+      <a href="/admin.html" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Dashboard</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-xl w-full mx-auto px-4 py-8 flex-1 flex flex-col justify-center">
+
+    <!-- Clock & Date Card -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6 text-center">
+      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold mb-2">
+        <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+        <span id="currentDateText">Memuat tanggal...</span>
+      </div>
+      <div id="liveClock" class="text-4xl font-extrabold text-slate-900 tracking-tight font-mono">
+        00:00:00
+      </div>
+      <p class="text-xs text-slate-500 mt-1">Waktu Server Resmi Indonesia</p>
+    </div>
+
+    <!-- Attendance Form Card -->
+    <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 border border-slate-100">
+      <div class="mb-6">
+        <h2 class="text-xl font-bold text-slate-900">Formulir Kehadiran Offline</h2>
+        <p class="text-sm text-slate-500 mt-1">Silakan masukkan nama lengkap dan pilih departemen Anda.</p>
+      </div>
+
+      <!-- Feedback Banner -->
+      <div id="feedbackBox" class="hidden mb-6 p-4 rounded-2xl transition duration-300"></div>
+
+      <form id="attendanceForm" class="space-y-5">
+        <!-- Input Nama -->
+        <div>
+          <label for="name" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+            Nama Lengkap <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-regular fa-user text-sm"></i>
+            </span>
+            <input 
+              type="text" 
+              id="name" 
+              required 
+              placeholder="Contoh: Budi Santoso"
+              class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 transition text-sm font-medium outline-none"
+            >
+          </div>
+        </div>
+
+        <!-- Input Departemen -->
+        <div>
+          <label for="department" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+            Departemen / Divisi <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-regular fa-building text-sm"></i>
+            </span>
+            <select 
+              id="department" 
+              required 
+              class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 transition text-sm font-medium outline-none bg-white"
+            >
+              <option value="" disabled selected>Pilih Departemen Anda...</option>
+              <option value="IT">IT & Engineering</option>
+              <option value="HRD">Human Resources (HRD)</option>
+              <option value="Finance">Finance & Accounting</option>
+              <option value="Marketing">Marketing & Branding</option>
+              <option value="Operasional">Operasional</option>
+              <option value="Desain">Kreatif & Desain</option>
+              <option value="Sales">Sales & Business Dev</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button 
+          type="submit" 
+          id="submitBtn"
+          class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition transform active:scale-[0.98] flex items-center justify-center space-x-2"
+        >
+          <i class="fa-solid fa-check-circle"></i>
+          <span>Kirim Absensi Sekarang</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="mt-6 flex justify-center space-x-4 text-xs text-slate-500">
+      <a href="/qr.html" class="hover:text-indigo-600 flex items-center space-x-1">
+        <i class="fa-solid fa-qrcode"></i>
+        <span>Tampilkan QR Code Kantor</span>
+      </a>
+      <span>•</span>
+      <a href="/admin.html" class="hover:text-indigo-600 flex items-center space-x-1">
+        <i class="fa-solid fa-lock"></i>
+        <span>Masuk Admin</span>
+      </a>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-center py-4 text-xs text-slate-400 border-t border-slate-200/60 bg-white">
+    Sistem Absensi Otomatis &copy; 2026 • Real-time Excel & Bot Sync
+  </footer>
+
+  <script>
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('liveClock').textContent = now.toLocaleTimeString('id-ID');
+      
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('currentDateText').textContent = now.toLocaleDateString('id-ID', options);
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Handle Form Submit
+    const form = document.getElementById('attendanceForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const feedbackBox = document.getElementById('feedbackBox');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const department = document.getElementById('department').value;
+
+      if (!name || !department) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Mencatat Kehadiran...</span>`;
+
+      try {
+        const res = await fetch('/api/attendance/offline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, department })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          const rec = data.record;
+          const isOnTime = rec.status === 'ON_TIME';
+
+          feedbackBox.className = `mb-6 p-5 rounded-2xl border ${
+            isOnTime 
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
+              : 'bg-amber-50 border-amber-200 text-amber-900'
+          } block animate-fade-in`;
+
+          feedbackBox.innerHTML = `
+            <div class="flex items-start space-x-3">
+              <div class="text-2xl ${isOnTime ? 'text-emerald-600' : 'text-amber-600'}">
+                <i class="fa-solid ${isOnTime ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-bold text-base leading-snug">
+                  ${isOnTime ? 'Berhasil! Kehadiran Tepat Waktu' : 'Tercatat Terlambat'}
+                </h3>
+                <p class="text-xs mt-1 text-slate-700">
+                  Halo <strong>${rec.name}</strong> (${rec.department}), absensi Anda tercatat pada pukul <strong>${rec.time}</strong>.
+                </p>
+                ${
+                  !isOnTime 
+                    ? `<div class="mt-2 text-xs font-semibold px-2.5 py-1 bg-amber-100 text-amber-800 rounded-md inline-block">
+                        Keterlambatan: ${rec.lateMinutes} menit
+                      </div>`
+                    : `<div class="mt-2 text-xs font-semibold px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-md inline-block">
+                        Status: On-Time ✨
+                      </div>`
+                }
+              </div>
+            </div>
+          `;
+
+          form.reset();
+        } else {
+          feedbackBox.className = 'mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 block';
+          feedbackBox.innerHTML = `
+            <div class="flex items-center space-x-3">
+              <i class="fa-solid fa-circle-xmark text-xl text-rose-600"></i>
+              <div class="text-sm font-semibold">${data.error || 'Terjadi kesalahan saat memproses absensi.'}</div>
+            </div>
+          `;
+        }
+      } catch (err) {
+        feedbackBox.className = 'mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 block';
+        feedbackBox.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-triangle-exclamation text-xl text-rose-600"></i>
+            <div class="text-sm font-semibold">Tidak dapat terhubung ke server. Periksa koneksi Anda.</div>
+          </div>
+        `;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> <span>Kirim Absensi Sekarang</span>`;
+      }
+    });
+  </script>
+</body>
+</html>

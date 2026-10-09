@@ -1,0 +1,43 @@
+{
+  "records": [
+    {
+      "id": "ATT-1791535331604-516",
+      "name": "Budi Santoso",
+      "department": "IT",
+      "type": "ONLINE_ZOOM",
+      "sessionName": "Pagi Hari",
+      "timestamp": "2026-10-09T08:42:11.604Z",
+      "date": "2026-10-09",
+      "time": "15:42:11",
+      "status": "ON_TIME",
+      "lateMinutes": 0
+    },
+    {
+      "id": "ATT-1791535331605-431",
+      "name": "Siti Rahma",
+      "department": "Finance",
+      "type": "OFFLINE",
+      "sessionName": "Kantor Harian",
+      "timestamp": "2026-10-09T08:42:11.605Z",
+      "date": "2026-10-09",
+      "time": "15:42:11",
+      "status": "LATE",
+      "lateMinutes": 20
+    }
+  ],
+  "meetings": [],
+  "departments": [
+    "IT",
+    "HRD",
+    "Finance",
+    "Marketing",
+    "Operasional",
+    "Desain",
+    "Sales",
+    "Umum",
+    "mmt",
+    "on",
+    "samaInstal add-on pihak ketiga untuk melakukan lebih banyak hal dengan MeetJelajahi Marketplace",
+    "on akan berfungsi lebih baik. Ekstensi sering menyebabkan masalah pengguna dengan mengubah halaman. https://developers.google.com/meet/add-ons Jika Anda harus menggunakan ekstensi, Anda dapat menyisipkan tombol ke #browser-extension-*-buttons. Fitur ini tidak didukung secara resmi."
+  ]
+}
