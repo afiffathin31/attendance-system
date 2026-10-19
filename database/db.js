@@ -96,13 +96,18 @@ function addRecord(record) {
   return newRecord;
 }
 
-function isRecordedForSession(name, sessionName, dateStr) {
+function isRecordedForSession(name, sessionName, dateStr, department) {
   const db = loadDb();
-  return (db.records || []).some(r => 
-    r.name.toLowerCase() === name.trim().toLowerCase() &&
-    r.sessionName === sessionName &&
-    r.date === dateStr
-  );
+  const targetName = name.trim().toLowerCase();
+  return (db.records || []).some(r => {
+    const matchName = r.name.toLowerCase() === targetName;
+    const matchSession = !sessionName || r.sessionName === sessionName;
+    const matchDate = !dateStr || r.date === dateStr;
+    if (department && r.department) {
+      return matchName && matchSession && matchDate && r.department.toLowerCase() === department.trim().toLowerCase();
+    }
+    return matchName && matchSession && matchDate;
+  });
 }
 
 function getDepartments() {

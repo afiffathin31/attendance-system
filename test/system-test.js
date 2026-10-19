@@ -10,9 +10,15 @@ async function runTests() {
   
   const testCases = [
     { input: '[IT] Budi Santoso', expectedDept: 'IT', expectedName: 'Budi Santoso' },
-    { input: 'Finance - Siti Rahma', expectedDept: 'Finance', expectedName: 'Siti Rahma' },
-    { input: 'Ahmad Fauzi - HRD', expectedDept: 'HRD', expectedName: 'Ahmad Fauzi' },
-    { input: 'Rian Pratama (Marketing)', expectedDept: 'Marketing', expectedName: 'Rian Pratama' },
+    { input: 'Finance - Siti Rahma', expectedDept: 'FAT', expectedName: 'Siti Rahma' },
+    { input: 'FAT - Budi Santoso', expectedDept: 'FAT', expectedName: 'Budi Santoso' },
+    { input: 'FAT – Ahmad Fauzi', expectedDept: 'FAT', expectedName: 'Ahmad Fauzi' },
+    { input: 'FAT - Hendra Wijaya', expectedDept: 'FAT', expectedName: 'Hendra Wijaya' },
+    { input: 'Solution Architect - Hendra Pratama', expectedDept: 'Solution Architect', expectedName: 'Hendra Pratama' },
+    { input: 'Solution Architect - Muhammad Rizky Pratama', expectedDept: 'Solution Architect', expectedName: 'Muhammad Rizky Pratama' },
+    { input: 'Ahmad Fauzi - HRD', expectedDept: 'HCMC', expectedName: 'Ahmad Fauzi' },
+    { input: 'Rian Pratama (Marketing)', expectedDept: 'Sales', expectedName: 'Rian Pratama' },
+    { input: '[EBS] Siti Rahmah', expectedDept: 'EBS', expectedName: 'Siti Rahmah' },
     { input: 'Dewi Lestari (Host)', expectedDept: 'Umum', expectedName: 'Dewi Lestari' }
   ];
 
@@ -20,14 +26,40 @@ async function runTests() {
     const res = syncService.parseParticipantName(tc.input);
     console.log(`  Input: "${tc.input}" -> Dept: "${res.department}", Name: "${res.name}"`);
     if (res.name !== tc.expectedName || res.department.toLowerCase() !== tc.expectedDept.toLowerCase()) {
-      throw new Error(`Gagal parsing: ${tc.input}`);
+      throw new Error(`Gagal parsing: ${tc.input} (didapat: Dept=${res.department}, Name=${res.name})`);
     }
   }
   console.log('  ✅ Test 1 Lulus: Semua variasi nama berhasil diparsing dengan akurat.\n');
 
+  // 1b. Test Same-Department Multi-Participants Batch Sync
+  console.log('Test 1b: Memverifikasi Batch Sync Banyak Peserta dari Departemen yang Sama...');
+  const db = require('../database/db');
+  db.clearAllRecords();
+
+  const sameDeptBatch = [
+    'FAT - Budi Santoso',
+    'FAT - Siti Rahma',
+    'FAT – Ahmad Fauzi',
+    'Solution Architect - Hendra Pratama',
+    'Solution Architect - Muhammad Rizky Pratama'
+  ];
+
+  const firstSync = await syncService.batchSyncParticipants(sameDeptBatch, 'Kajian Rutin', '08:00', 15);
+  console.log(`  Sync 1: Berhasil mencatat ${firstSync.length} dari ${sameDeptBatch.length} peserta.`);
+  if (firstSync.length !== 5) {
+    throw new Error(`Data departemen sama ter-skip! Harusnya 5, tetapi hanya ${firstSync.length} yang tercatat.`);
+  }
+
+  // Verifikasi apakah auto-sync 5 menit berikutnya menduplikasi atau tidak
+  const secondSync = await syncService.batchSyncParticipants(sameDeptBatch, 'Kajian Rutin', '08:00', 15);
+  console.log(`  Sync 2 (Auto-sync 5 menit): Tercatat ${secondSync.length} peserta baru (semua harus di-skip karena sudah terdata).`);
+  if (secondSync.length !== 0) {
+    throw new Error(`Deduplikasi gagal! Terjadi duplikasi sebanyak ${secondSync.length}`);
+  }
+  console.log('  ✅ Test 1b Lulus: Peserta dari departemen yang sama TIDAK ter-skip dan deduplikasi bekerja tepat.\n');
+
   // 2. Test Database & Record Addition
   console.log('Test 2: Menguji Database Persistence...');
-  const db = require('../database/db');
   db.clearAllRecords();
 
   const rec1 = db.addRecord({

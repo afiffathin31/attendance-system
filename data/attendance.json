@@ -1,26 +1,26 @@
 {
   "records": [
     {
-      "id": "ATT-1791535331604-516",
+      "id": "ATT-1792393452705-394",
       "name": "Budi Santoso",
       "department": "IT",
       "type": "ONLINE_ZOOM",
       "sessionName": "Pagi Hari",
-      "timestamp": "2026-10-09T08:42:11.604Z",
-      "date": "2026-10-09",
-      "time": "15:42:11",
+      "timestamp": "2026-10-19T07:04:12.705Z",
+      "date": "2026-10-19",
+      "time": "14:04:12",
       "status": "ON_TIME",
       "lateMinutes": 0
     },
     {
-      "id": "ATT-1791535331605-431",
+      "id": "ATT-1792393452708-298",
       "name": "Siti Rahma",
       "department": "Finance",
       "type": "OFFLINE",
       "sessionName": "Kantor Harian",
-      "timestamp": "2026-10-09T08:42:11.605Z",
-      "date": "2026-10-09",
-      "time": "15:42:11",
+      "timestamp": "2026-10-19T07:04:12.708Z",
+      "date": "2026-10-19",
+      "time": "14:04:12",
       "status": "LATE",
       "lateMinutes": 20
     }
@@ -38,6 +38,8 @@
     "mmt",
     "on",
     "samaInstal add-on pihak ketiga untuk melakukan lebih banyak hal dengan MeetJelajahi Marketplace",
-    "on akan berfungsi lebih baik. Ekstensi sering menyebabkan masalah pengguna dengan mengubah halaman. https://developers.google.com/meet/add-ons Jika Anda harus menggunakan ekstensi, Anda dapat menyisipkan tombol ke #browser-extension-*-buttons. Fitur ini tidak didukung secara resmi."
+    "on akan berfungsi lebih baik. Ekstensi sering menyebabkan masalah pengguna dengan mengubah halaman. https://developers.google.com/meet/add-ons Jika Anda harus menggunakan ekstensi, Anda dapat menyisipkan tombol ke #browser-extension-*-buttons. Fitur ini tidak didukung secara resmi.",
+    "FAT",
+    "Solution Architect"
   ]
 }

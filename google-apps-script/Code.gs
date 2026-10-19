@@ -1273,17 +1273,41 @@ function doPost(e) {
     const lastRow = sheetLog.getLastRow();
     const existingSet = new Set();
     if (lastRow > 1) {
-      const data = sheetLog.getRange(2, 2, lastRow - 1, 3).getValues();
+      // Dapatkan indeks kolom secara dinamis dari header baris 1
+      const headers = sheetLog.getRange(1, 1, 1, Math.max(sheetLog.getLastColumn(), 10)).getValues()[0];
+      let colDate = -1;
+      let colName = -1;
+      let colDept = -1;
+
+      for (let c = 0; c < headers.length; c++) {
+        const h = String(headers[c] || '').toLowerCase().trim();
+        if (h.includes("tanggal")) colDate = c;
+        else if (h.includes("nama")) colName = c;
+        else if (h.includes("departemen") || h.includes("divisi")) colDept = c;
+      }
+
+      // Fallback kolom standar jika header tidak ditemukan: B (col 1), D (col 3), E (col 4)
+      if (colDate === -1) colDate = 1;
+      if (colName === -1) colName = 3;
+      if (colDept === -1) colDept = 4;
+
+      const numCols = Math.max(colDate, colName, colDept) + 1;
+      const data = sheetLog.getRange(2, 1, lastRow - 1, numCols).getValues();
+
       data.forEach(row => {
-        let rDate = row[0];
+        let rDate = row[colDate];
         if (rDate instanceof Date) {
           rDate = Utilities.formatDate(rDate, "Asia/Jakarta", "yyyy-MM-dd");
         } else {
-          rDate = String(rDate).trim();
+          rDate = String(rDate || '').trim();
         }
-        const rName = String(row[2]).toLowerCase().trim();
 
-        if (rDate === dateStr) {
+        const rName = String(row[colName] || '').toLowerCase().trim();
+        const rDept = String(row[colDept] || '').toLowerCase().trim();
+
+        if (rDate === dateStr && rName) {
+          // Simpan identitas nama dan kombinasi nama|departemen
+          existingSet.add(`${rName}|${rDept}`);
           existingSet.add(rName);
         }
       });
@@ -1296,10 +1320,15 @@ function doPost(e) {
       const parsed = parseParticipantName(rawName);
       if (!parsed || !parsed.name) continue;
 
-      const key = parsed.name.toLowerCase().trim();
-      if (existingSet.has(key)) continue;
+      const cleanName = parsed.name.toLowerCase().trim();
+      const cleanDept = (parsed.department || '').toLowerCase().trim();
+      const compositeKey = `${cleanName}|${cleanDept}`;
 
-      existingSet.add(key);
+      // Deduplikasi berbasis identitas nama peserta, BUKAN departemen!
+      if (existingSet.has(compositeKey) || existingSet.has(cleanName)) continue;
+
+      existingSet.add(compositeKey);
+      existingSet.add(cleanName);
       newRows.push([
         timestampStr,
         dateStr,
@@ -1384,12 +1413,12 @@ function parseParticipantName(rawName) {
   // 2. Abaikan teks yang mengandung tombol Zoom
   if (/invite|mute all|mute|unmute|whiteboards|screen share/i.test(clean)) return null;
 
-  // 3. Batas panjang dan format
-  if (clean.includes("\n") || clean.length < 3 || clean.length > 40) return null;
+  // 3. Batas panjang dan format (minimal 2 karakter, maksimal 70 karakter)
+  if (clean.includes("\n") || clean.length < 2 || clean.length > 70) return null;
 
-  // 4. Pastikan memiliki minimal 3 huruf alfabet (menghindari inisial tunggal seperti "J")
+  // 4. Pastikan memiliki minimal 2 huruf alfabet
   const alphaOnly = clean.replace(/[^a-zA-Z]/g, '');
-  if (alphaOnly.length < 3) return null;
+  if (alphaOnly.length < 2) return null;
 
   const lower = clean.toLowerCase();
   const junkWords = [
@@ -1401,57 +1430,168 @@ function parseParticipantName(rawName) {
   }
 
   // 5. Bersihkan badge role
-  clean = clean.replace(/\((Anda|You|Host|Penyelenggara rapat|Co-host|Host,\s*me|Me|Guest)\)/gi, "").trim();
+  clean = clean.replace(/\((Anda|You|Host|Penyelenggara rapat|Penyelenggara|Co-host|Host,\s*me|Me|Guest|Tamu)\)/gi, "").trim();
 
   // 6. Hapus tombol yang menempel
   clean = clean.replace(/\b(invite|mute all|more|mute)\b/gi, "").trim();
 
+  if (!clean || clean.length < 2) return null;
+
   const knownDeptMap = {
+    // 14 Departemen Resmi & Aliases
     "ebs": "EBS",
     "solution architect": "Solution Architect",
+    "solution architecture": "Solution Architect",
+    "architect": "Solution Architect",
     "sa": "Solution Architect",
     "could automation": "Could Automation",
     "cloud automation": "Could Automation",
     "ca": "Could Automation",
     "research and innovation": "Research and innovation",
+    "research & innovation": "Research and innovation",
     "rni": "Research and innovation",
     "r&i": "Research and innovation",
+    "research": "Research and innovation",
     "infrastructur analytic": "Infrastructur Analytic",
     "infrastructure analytic": "Infrastructur Analytic",
+    "infrastructure analytics": "Infrastructur Analytic",
+    "infrastruktur analitik": "Infrastructur Analytic",
     "ia": "Infrastructur Analytic",
     "fat": "FAT",
+    "finance, accounting & tax": "FAT",
+    "finance": "FAT",
+    "keuangan": "FAT",
+    "accounting": "FAT",
+    "tax": "FAT",
+    "pajak": "FAT",
     "sales": "Sales",
+    "marketing": "Sales",
+    "pemasaran": "Sales",
+    "bd": "Sales",
+    "business development": "Sales",
     "cyber cecurity": "Cyber Cecurity",
     "cyber security": "Cyber Cecurity",
+    "security": "Cyber Cecurity",
+    "keamanan siber": "Cyber Cecurity",
     "cs": "Cyber Cecurity",
     "pmo": "PMO",
+    "project management": "PMO",
     "bod": "BOD",
+    "board of directors": "BOD",
+    "direksi": "BOD",
     "modern application": "Modern Application",
+    "modern applications": "Modern Application",
+    "modern app": "Modern Application",
+    "modern apps": "Modern Application",
     "ma": "Modern Application",
     "data analytics": "Data Analytics",
+    "data analytic": "Data Analytics",
+    "data analyst": "Data Analytics",
+    "data science": "Data Analytics",
     "da": "Data Analytics",
     "hcmc": "HCMC",
+    "hrd": "HCMC",
+    "hr": "HCMC",
+    "human capital": "HCMC",
+    "personalia": "HCMC",
     "pkl/magang": "PKL/Magang",
     "pkl": "PKL/Magang",
     "magang": "PKL/Magang",
+    "intern": "PKL/Magang",
+    "internship": "PKL/Magang",
     "it": "IT",
+    "ti": "IT",
+    "legal": "Legal",
+    "operasional": "Operasional",
+    "ops": "Operasional",
+    "admin": "Admin",
     "umum": "Umum"
   };
 
-  const bracketMatch = clean.match(/^\[([^\]]+)\]\s*(.+)$/);
-  if (bracketMatch) {
-    const rawD = bracketMatch[1].trim().toLowerCase();
-    const dept = knownDeptMap[rawD] || bracketMatch[1].trim();
-    return { department: dept, name: bracketMatch[2].trim() };
+  function normalizeDept(str) {
+    if (!str) return null;
+    const raw = str.trim().toLowerCase();
+    if (knownDeptMap[raw]) return knownDeptMap[raw];
+    const cleaned = raw.replace(/[\s\-_]+/g, ' ');
+    if (knownDeptMap[cleaned]) return knownDeptMap[cleaned];
+    return null;
   }
 
-  if (clean.includes("-")) {
-    const parts = clean.split("-");
-    const p1 = parts[0].trim();
-    const p2 = parts.slice(1).join("-").trim();
-    if (knownDeptMap[p1.toLowerCase()]) return { department: knownDeptMap[p1.toLowerCase()], name: p2 };
-    if (knownDeptMap[p2.toLowerCase()]) return { name: p1, department: knownDeptMap[p2.toLowerCase()] };
-    return { name: p1, department: p2 };
+  // Pola 1: [Departemen] Nama Lengkap
+  const bracketPrefix = clean.match(/^[\[\{]([^\]\}]+)[\]\}]\s*[-–—:]?\s*(.+)$/);
+  if (bracketPrefix) {
+    const rawDept = bracketPrefix[1].trim();
+    return {
+      department: normalizeDept(rawDept) || rawDept,
+      name: bracketPrefix[2].trim()
+    };
+  }
+
+  // Pola 2: Nama Lengkap [Departemen]
+  const bracketSuffix = clean.match(/^(.+?)\s*[-–—:]?\s*[\[\{]([^\]\}]+)[\]\}]$/);
+  if (bracketSuffix) {
+    const rawDept = bracketSuffix[2].trim();
+    return {
+      name: bracketSuffix[1].trim(),
+      department: normalizeDept(rawDept) || rawDept
+    };
+  }
+
+  // Pola 3: (Departemen) Nama Lengkap
+  const parenPrefix = clean.match(/^\(([^)]+)\)\s*[-–—:]?\s*(.+)$/);
+  if (parenPrefix) {
+    const rawDept = parenPrefix[1].trim();
+    return {
+      department: normalizeDept(rawDept) || rawDept,
+      name: parenPrefix[2].trim()
+    };
+  }
+
+  // Pola 4: Nama Lengkap (Departemen)
+  const parenMatch = clean.match(/^(.+?)\s*\(([^)]+)\)$/);
+  if (parenMatch) {
+    const p1 = parenMatch[1].trim();
+    const p2 = parenMatch[2].trim();
+    if (normalizeDept(p2)) {
+      return { name: p1, department: normalizeDept(p2) };
+    } else if (normalizeDept(p1)) {
+      return { department: normalizeDept(p1), name: p2 };
+    } else {
+      return { name: p1, department: p2 };
+    }
+  }
+
+  // Pola 5: Separator -, –, —, |, /, :, _
+  if (/[-–—|:_/]/.test(clean)) {
+    const parts = clean.split(/[-–—|:_]/).map(function(s) { return s.trim(); }).filter(Boolean);
+    if (parts.length >= 2) {
+      const p1 = parts[0];
+      const p2 = parts.slice(1).join(' ').trim();
+
+      const p1Dept = normalizeDept(p1);
+      const p2Dept = normalizeDept(p2);
+
+      if (p1Dept && !p2Dept) {
+        return { department: p1Dept, name: p2 };
+      }
+      if (p2Dept && !p1Dept) {
+        return { name: p1, department: p2Dept };
+      }
+
+      // Heuristik akronim (misal FAT, PMO, BOD, MA, CA, SA, RNI)
+      const p1IsAcronym = /^[A-Za-z0-9&]{2,5}$/.test(p1) && (p1 === p1.toUpperCase() || p1.length <= 4);
+      const p2IsAcronym = /^[A-Za-z0-9&]{2,5}$/.test(p2) && (p2 === p2.toUpperCase() || p2.length <= 4);
+
+      if (p1IsAcronym && !p2IsAcronym) {
+        return { department: p1, name: p2 };
+      }
+      if (p2IsAcronym && !p1IsAcronym) {
+        return { name: p1, department: p2 };
+      }
+
+      // Standar penamaan meeting kantor: [Departemen] - [Nama Lengkap]
+      return { department: p1, name: p2 };
+    }
   }
 
   return { name: clean, department: "Umum" };

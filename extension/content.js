@@ -24,7 +24,7 @@
   }
 
   function isJunkText(text) {
-    if (!text || text.length < 2 || text.length > 40) return true;
+    if (!text || text.length < 2 || text.length > 70) return true;
     if (text.includes('\n')) return true;
 
     const lower = text.toLowerCase();
@@ -47,8 +47,8 @@
     // Ignore single snake_case icon words (e.g. "more_vert", "frame_person")
     if (text.includes('_') && !text.includes(' ')) return true;
 
-    // Names rarely exceed 5 words
-    if (text.split(/\s+/).length > 5) return true;
+    // Names with departments rarely exceed 8 words
+    if (text.split(/\s+/).length > 8) return true;
 
     return false;
   }
@@ -197,8 +197,8 @@
       ];
       if (junk.some(j => lower === j || lower.startsWith(j + ' ') || lower.endsWith(' ' + j))) return '';
 
-      // 7. Batas panjang nama wajar (3 - 40 karakter)
-      if (text.length < 3 || text.length > 40) return '';
+      // 7. Batas panjang nama wajar (3 - 70 karakter)
+      if (text.length < 3 || text.length > 70) return '';
 
       return text;
     }
@@ -234,7 +234,7 @@
         const textElements = root.querySelectorAll('span, div');
         textElements.forEach(el => {
           const rawText = (el.innerText || '').trim();
-          if (/\((Host|Host,\s*me|You|Me)\)/i.test(rawText) && rawText.length > 3 && rawText.length < 40) {
+          if (/\((Host|Host,\s*me|You|Me)\)/i.test(rawText) && rawText.length > 3 && rawText.length < 70) {
             let item = el.closest('li, [role="listitem"], [class*="participants-item"]');
             if (item) {
               const nameEl = item.querySelector('.participants-item__display-name, [class*="display-name"], span[class*="name"]');
