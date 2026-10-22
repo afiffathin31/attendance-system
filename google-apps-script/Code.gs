@@ -32,8 +32,8 @@ function onOpen() {
     .createMenu("🕌 Presensi Kajian")
     .addItem("⚙️ Setup / Perbarui Sistem Lengkap", "setupSistemAbsensiOtomatis")
     .addItem("👥 Buka Master Data Karyawan", "bukaTabDataKaryawan")
+    .addItem("🧹 Kosongkan & Reset Tab Data Karyawan", "resetDanKosongkanTabDataKaryawan")
     .addItem("🔄 Sinkronkan Divisi di Log Absensi", "sinkronkanDepartemenLogDariDataKaryawan")
-    .addItem("🧹 Kosongkan Data Input Karyawan", "kosongkanDataKaryawan")
     .addItem("📊 Buat / Gambar Ulang Semua Grafik", "gambarUlangSemuaGrafik")
     .addItem("🔍 Buka Filter Kalender & Departemen", "bukaTabFilter")
     .addItem("🧹 Bersihkan Kolom Ganda Form Responses", "perbaikiKolomGandaFormResponses")
@@ -379,7 +379,7 @@ function setupTabDataKaryawan() {
       `=IF(ISBLANK(B${r}); ""; COUNTIFS('Log Absensi'!D:D; B${r}; 'Log Absensi'!I:I; "TEPAT WAKTU"))`,
       `=IF(ISBLANK(B${r}); ""; COUNTIFS('Log Absensi'!D:D; B${r}; 'Log Absensi'!I:I; "TERLAMBAT"))`,
       `=IF(ISBLANK(B${r}); ""; IFERROR(IF(D${r}>0; E${r}/D${r}; 0); 0))`,
-      `=IF(ISBLANK(B${r}); ""; IF(D${r}=0; "Belum Hadir"; IF(G${r}>=0.85; "⭐ Sangat Baik"; IF(G${r}>=0.7; "👍 Baik"; "⚠️ Perlu Ditingkatkan"))))`
+      `=IF(ISBLANK(B${r}); ""; IF(D${r}=0; "Belum Hadir"; IF(G${r}*100>=85; "⭐ Sangat Baik"; IF(G${r}*100>=70; "👍 Baik"; "⚠️ Perlu Ditingkatkan"))))`
     ]);
   }
   sheet.getRange("A3:A200").setFormulas(indFormulas.map(f => [f[0]]));
@@ -443,22 +443,31 @@ function setupTabDataKaryawan() {
 }
 
 /**
- * Mengosongkan data input nama dan divisi pada tab '👥 Data Karyawan'
+ * Mengosongkan seluruh kolom Nama (B) dan Divisi (C) pada tab 'Data Karyawan',
+ * serta memperbarui formula Status Performa agar tidak terjadi #ERROR!.
+ */
+function resetDanKosongkanTabDataKaryawan() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("Data Karyawan") || ss.getSheetByName("👥 Data Karyawan");
+  if (!sheet) {
+    setupTabDataKaryawan();
+    sheet = ss.getSheetByName("Data Karyawan") || ss.getSheetByName("👥 Data Karyawan");
+  }
+  if (sheet) {
+    const maxR = Math.max(sheet.getLastRow(), 200);
+    // Hapus seluruh isi Kolom B & C dari baris 3 ke bawah
+    sheet.getRange(3, 2, maxR - 2, 2).clearContent();
+    setupTabDataKaryawan();
+    ss.setActiveSheet(sheet);
+    SpreadsheetApp.getActiveSpreadsheet().toast("Tab Data Karyawan berhasil dikosongkan dan rumus diperbaiki!", "✅ Berhasil", 6);
+  }
+}
+
+/**
+ * Alias untuk menu kosongkan data
  */
 function kosongkanDataKaryawan() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("👥 Data Karyawan") || ss.getSheetByName("Data Karyawan");
-  if (!sheet) return;
-  const ui = SpreadsheetApp.getUi();
-  const resp = ui.alert(
-    "Konfirmasi Pengosongan Data",
-    "Apakah Anda yakin ingin mengosongkan seluruh kolom Nama dan Divisi di tab 'Data Karyawan'?\n(Kolom rumus dan dropdown tetap utuh)",
-    ui.ButtonSet.YES_NO
-  );
-  if (resp === ui.Button.YES) {
-    sheet.getRange("B3:C200").clearContent();
-    ui.alert("Berhasil", "Kolom Nama dan Divisi pada tab 'Data Karyawan' telah dikosongkan.", ui.ButtonSet.OK);
-  }
+  resetDanKosongkanTabDataKaryawan();
 }
 
 /**
