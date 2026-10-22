@@ -224,35 +224,7 @@ async function buildWorkbook() {
   });
   sheetKaryawan.getRow(1).height = 28;
 
-  // Add existing individual records
-  analytics.individuals.forEach((ind, idx) => {
-    const row = sheetKaryawan.addRow({
-      no: idx + 1,
-      name: ind.name,
-      department: ind.department,
-      total: ind.total,
-      onTime: ind.onTime,
-      late: ind.late,
-      onTimeRate: `${ind.onTimeRate}%`,
-      status: ind.onTimeRate >= 85 ? '⭐ Sangat Baik' : (ind.onTimeRate >= 70 ? '👍 Baik' : '⚠️ Perlu Ditingkatkan')
-    });
-    row.height = 22;
-    row.alignment = { vertical: 'middle' };
-    row.getCell('no').alignment = { vertical: 'middle', horizontal: 'center' };
-    row.getCell('total').alignment = { vertical: 'middle', horizontal: 'center' };
-    row.getCell('onTime').alignment = { vertical: 'middle', horizontal: 'center' };
-    row.getCell('late').alignment = { vertical: 'middle', horizontal: 'center' };
-    row.getCell('onTimeRate').alignment = { vertical: 'middle', horizontal: 'center' };
-    row.getCell('status').alignment = { vertical: 'middle', horizontal: 'center' };
-
-    const rateCell = row.getCell('onTimeRate');
-    if (ind.onTimeRate >= 80) {
-      rateCell.font = { bold: true, color: { argb: '047857' } };
-    } else {
-      rateCell.font = { bold: true, color: { argb: 'B91C1C' } };
-    }
-  });
-
+  // Kosongkan baris data karyawan agar user dapat menginputkan nama dan divisi sendiri secara mandiri
   // Data Validation Dropdown for Column C (Departemen) - 14 Departemen Resmi
   const deptListString = '"' + [
     'EBS', 'Solution Architect', 'Could Automation', 'Research and innovation',

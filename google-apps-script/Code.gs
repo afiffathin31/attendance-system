@@ -32,6 +32,8 @@ function onOpen() {
     .createMenu("🕌 Presensi Kajian")
     .addItem("⚙️ Setup / Perbarui Sistem Lengkap", "setupSistemAbsensiOtomatis")
     .addItem("👥 Buka Master Data Karyawan", "bukaTabDataKaryawan")
+    .addItem("🔄 Sinkronkan Divisi di Log Absensi", "sinkronkanDepartemenLogDariDataKaryawan")
+    .addItem("🧹 Kosongkan Data Input Karyawan", "kosongkanDataKaryawan")
     .addItem("📊 Buat / Gambar Ulang Semua Grafik", "gambarUlangSemuaGrafik")
     .addItem("🔍 Buka Filter Kalender & Departemen", "bukaTabFilter")
     .addItem("🧹 Bersihkan Kolom Ganda Form Responses", "perbaikiKolomGandaFormResponses")
@@ -293,7 +295,7 @@ function setupTabFilterDanPencarian() {
 
 /**
  * Membuat atau memperbarui tab khusus '👥 Data Karyawan' dengan:
- * 1. Kolom Input Nama Lengkap & Dropdown 14 Departemen Resmi (Kolom B & C)
+ * 1. Kolom Input Nama Lengkap & Dropdown 14 Departemen Resmi (Kolom B & C - DIBIARKAN KOSONG untuk diisi pengguna)
  * 2. Monitoring Performa Individu Real-time (Total Hadir, Tepat Waktu, Terlambat, % On-Time, Status)
  * 3. Tabel Ringkasan Monitoring Performa 14 Divisi Real-time (Kolom J - N)
  */
@@ -364,7 +366,11 @@ function setupTabDataKaryawan() {
     .build();
   sheet.getRange("C3:C200").setDataValidation(ruleDept);
 
+  // Format Text untuk Kolom Nama Lengkap (B3:B200)
+  sheet.getRange("B3:B200").setNumberFormat("@");
+
   // 2. Set Formula Otomatis untuk Tabel Individu (Baris 3 s/d 200)
+  // Formula hanya aktif jika Kolom B diisi nama karyawan (ISBLANK = "")
   const indFormulas = [];
   for (let r = 3; r <= 200; r++) {
     indFormulas.push([
@@ -413,29 +419,10 @@ function setupTabDataKaryawan() {
   sheet.getRange("J17:N17").setBackground("#f1f5f9").setBorder(true, true, true, true, true, true, "#94a3b8", SpreadsheetApp.BorderStyle.SOLID);
   sheet.getRange("J2:N16").setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
 
-  // 4. Auto-populate nama unik awal dari 'Log Absensi' jika kolom B baris 3 masih kosong
-  if (sheet.getRange("B3").getValue() === "") {
-    const sheetLog = ss.getSheetByName("Log Absensi");
-    if (sheetLog && sheetLog.getLastRow() > 1) {
-      const logData = sheetLog.getRange(2, 4, sheetLog.getLastRow() - 1, 2).getValues();
-      const seen = new Map();
-      logData.forEach(row => {
-        const rawN = String(row[0] || '').trim();
-        const rawD = String(row[1] || '').trim();
-        if (rawN && rawN !== "Tanpa Nama" && !seen.has(rawN.toLowerCase())) {
-          let matchedDept = DEPARTEMEN_LIST.find(d => d.toLowerCase() === rawD.toLowerCase()) || DEPARTEMEN_LIST[0];
-          seen.set(rawN.toLowerCase(), { name: rawN, dept: matchedDept });
-        }
-      });
-      const initialList = Array.from(seen.values());
-      if (initialList.length > 0) {
-        const rowsToSet = initialList.slice(0, 195).map(item => [item.name, item.dept]);
-        sheet.getRange(3, 2, rowsToSet.length, 2).setValues(rowsToSet);
-      }
-    }
-  }
+  // CATATAN: Baris data karyawan (Kolom B & C baris 3 ke bawah) SENGAJA DIBIARKAN KOSONG
+  // agar pengguna dapat mengisi nama dan memilih divisi melalui dropdown secara mandiri.
 
-  // 5. Atur Lebar Kolom
+  // 4. Atur Lebar Kolom
   sheet.setColumnWidth(1, 45);   // No
   sheet.setColumnWidth(2, 230);  // Nama Karyawan
   sheet.setColumnWidth(3, 190);  // Departemen Dropdown
@@ -456,7 +443,30 @@ function setupTabDataKaryawan() {
 }
 
 /**
+ * Mengosongkan data input nama dan divisi pada tab '👥 Data Karyawan'
+ */
+function kosongkanDataKaryawan() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("👥 Data Karyawan") || ss.getSheetByName("Data Karyawan");
+  if (!sheet) return;
+  const ui = SpreadsheetApp.getUi();
+  const resp = ui.alert(
+    "Konfirmasi Pengosongan Data",
+    "Apakah Anda yakin ingin mengosongkan seluruh kolom Nama dan Divisi di tab 'Data Karyawan'?\n(Kolom rumus dan dropdown tetap utuh)",
+    ui.ButtonSet.YES_NO
+  );
+  if (resp === ui.Button.YES) {
+    sheet.getRange("B3:C200").clearContent();
+    ui.alert("Berhasil", "Kolom Nama dan Divisi pada tab 'Data Karyawan' telah dikosongkan.", ui.ButtonSet.OK);
+  }
+}
+
+/**
  * Mencari departemen terdaftar berdasarkan nama karyawan dari tab '👥 Data Karyawan'
+ * Menghubungkan peserta Zoom / Google Meet / Form langsung dengan divisi resminya
+ * 
+ * @param {string} name - Nama peserta yang masuk dari Zoom / Google Meet / Form
+ * @return {string|null} - Nama divisi resmi yang terdaftar, atau null
  */
 function lookupRegisteredDepartment(name) {
   if (!name) return null;
@@ -469,17 +479,158 @@ function lookupRegisteredDepartment(name) {
     if (lastRow < 3) return null;
 
     const data = sheetKaryawan.getRange(3, 2, lastRow - 2, 2).getValues(); // Col B (Nama), Col C (Dept)
-    const cleanTarget = String(name).trim().toLowerCase();
+    let cleanTarget = String(name).trim().toLowerCase();
 
+    // 1. Bersihkan badge role Zoom / Meet jika ada
+    cleanTarget = cleanTarget.replace(/\((anda|you|host|penyelenggara rapat|penyelenggara|co-host|host,\s*me|me|guest|tamu)\)/gi, "").trim();
+    // Hilangkan spasi berlebih
+    cleanTarget = cleanTarget.replace(/\s+/g, ' ');
+
+    if (!cleanTarget) return null;
+
+    // Tahap 1: Pencarian Persis (Exact match - case insensitive)
     for (let row of data) {
-      const empName = String(row[0] || '').trim().toLowerCase();
+      const empName = String(row[0] || '').trim().toLowerCase().replace(/\s+/g, ' ');
       const empDept = String(row[1] || '').trim();
-      if (empName === cleanTarget && empDept && empDept !== "Umum") {
+      if (empName && empName === cleanTarget && empDept && empDept !== "Umum") {
         return empDept;
       }
     }
-  } catch(e) {}
+
+    // Tahap 2: Sub-string / Partial match (jika panjang nama >= 4 karakter)
+    // Membantu jika di Zoom peserta menggunakan imbuhan gelar atau nama panggilan
+    if (cleanTarget.length >= 4) {
+      for (let row of data) {
+        const empName = String(row[0] || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const empDept = String(row[1] || '').trim();
+        if (empName && empDept && empDept !== "Umum" && empName.length >= 4) {
+          if (cleanTarget.includes(empName) || empName.includes(cleanTarget)) {
+            return empDept;
+          }
+        }
+      }
+    }
+  } catch(e) {
+    Logger.log("Error in lookupRegisteredDepartment: " + e.message);
+  }
   return null;
+}
+
+/**
+ * Menyinkronkan ulang kolom Departemen di tab 'Log Absensi' 
+ * berdasarkan Master Data Karyawan yang telah diisi pengguna.
+ * Sangat bermanfaat setelah pengguna memasukkan daftar nama & divisi baru.
+ */
+function sinkronkanDepartemenLogDariDataKaryawan() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetLog = ss.getSheetByName("Log Absensi");
+  const sheetKaryawan = ss.getSheetByName("👥 Data Karyawan") || ss.getSheetByName("Data Karyawan");
+
+  if (!sheetLog || !sheetKaryawan) {
+    SpreadsheetApp.getActiveSpreadsheet().toast("Sheet 'Log Absensi' atau 'Data Karyawan' belum siap.", "Perhatian", 5);
+    return 0;
+  }
+
+  const logLastRow = sheetLog.getLastRow();
+  if (logLastRow < 2) {
+    SpreadsheetApp.getActiveSpreadsheet().toast("Belum ada data di Log Absensi.", "Info", 4);
+    return 0;
+  }
+
+  // Bangun peta master: Nama -> Departemen
+  const masterMap = new Map();
+  const karLastRow = sheetKaryawan.getLastRow();
+  if (karLastRow >= 3) {
+    const karData = sheetKaryawan.getRange(3, 2, karLastRow - 2, 2).getValues();
+    karData.forEach(r => {
+      const n = String(r[0] || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const d = String(r[1] || '').trim();
+      if (n && d && d !== "Umum") {
+        masterMap.set(n, d);
+      }
+    });
+  }
+
+  if (masterMap.size === 0) {
+    SpreadsheetApp.getActiveSpreadsheet().toast("Belum ada data karyawan di tab '👥 Data Karyawan'. Silakan isi terlebih dahulu.", "Info", 6);
+    return 0;
+  }
+
+  // Baca Kolom D (Nama Jamaah) dan Kolom E (Departemen) dari Log Absensi
+  const logRange = sheetLog.getRange(2, 4, logLastRow - 1, 2);
+  const logValues = logRange.getValues();
+  let updatedCount = 0;
+
+  for (let i = 0; i < logValues.length; i++) {
+    const rawName = String(logValues[i][0] || '').trim();
+    const currentDept = String(logValues[i][1] || '').trim();
+    const cleanName = rawName.toLowerCase().replace(/\s+/g, ' ');
+
+    if (!cleanName) continue;
+
+    // Jika departemen kosong, "Umum", atau belum terdaftar resmi
+    if (!currentDept || currentDept === "Umum" || !DEPARTEMEN_LIST.includes(currentDept)) {
+      let matchedDept = masterMap.get(cleanName);
+      if (!matchedDept && cleanName.length >= 4) {
+        // Coba partial match
+        for (let [kName, kDept] of masterMap.entries()) {
+          if (cleanName.includes(kName) || kName.includes(cleanName)) {
+            matchedDept = kDept;
+            break;
+          }
+        }
+      }
+      if (matchedDept && matchedDept !== currentDept) {
+        logValues[i][1] = matchedDept;
+        updatedCount++;
+      }
+    }
+  }
+
+  if (updatedCount > 0) {
+    logRange.setValues(logValues);
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      `Berhasil mengidentifikasi & menyinkronkan ${updatedCount} baris departemen di Log Absensi!`,
+      "✅ Sinkronisasi Berhasil",
+      6
+    );
+  } else {
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      "Semua departemen di Log Absensi sudah sinkron dengan Data Karyawan.",
+      "ℹ️ Sudah Sinkron",
+      5
+    );
+  }
+
+  return updatedCount;
+}
+
+/**
+ * Trigger otomatis ketika pengguna mengedit sel secara langsung di spreadsheet
+ * Jika mengedit/mengetik Nama Jamaah di 'Log Absensi', otomatis mengisi departemennya
+ */
+function onEdit(e) {
+  if (!e || !e.range) return;
+  try {
+    const sheet = e.range.getSheet();
+    const sheetName = sheet.getName();
+    const row = e.range.getRow();
+    const col = e.range.getColumn();
+
+    // Jika mengedit kolom 'Nama Jamaah' (Kolom 4 / D) di 'Log Absensi' pada baris >= 2
+    if (sheetName === "Log Absensi" && col === 4 && row >= 2) {
+      const nama = String(e.value || sheet.getRange(row, 4).getValue() || '').trim();
+      const currentDept = String(sheet.getRange(row, 5).getValue() || '').trim();
+      if (nama && (!currentDept || currentDept === "Umum")) {
+        const foundDept = lookupRegisteredDepartment(nama);
+        if (foundDept) {
+          sheet.getRange(row, 5).setValue(foundDept);
+        }
+      }
+    }
+  } catch(err) {
+    // Non-blocking trigger
+  }
 }
 
 /**
