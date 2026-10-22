@@ -31,6 +31,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("🕌 Presensi Kajian")
     .addItem("⚙️ Setup / Perbarui Sistem Lengkap", "setupSistemAbsensiOtomatis")
+    .addItem("👥 Buka Master Data Karyawan", "bukaTabDataKaryawan")
     .addItem("📊 Buat / Gambar Ulang Semua Grafik", "gambarUlangSemuaGrafik")
     .addItem("🔍 Buka Filter Kalender & Departemen", "bukaTabFilter")
     .addItem("🧹 Bersihkan Kolom Ganda Form Responses", "perbaikiKolomGandaFormResponses")
@@ -39,6 +40,19 @@ function onOpen() {
     .addItem("📅 Buka Tab Jadwal Kajian", "bukaJadwalKajian")
     .addItem("📋 Buka Google Form Jamaah", "bukaGoogleForm")
     .addToUi();
+}
+
+/**
+ * Membuka / mengaktifkan tab '👥 Data Karyawan'
+ */
+function bukaTabDataKaryawan() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("👥 Data Karyawan") || ss.getSheetByName("Data Karyawan");
+  if (!sheet) {
+    setupTabDataKaryawan();
+    sheet = ss.getSheetByName("👥 Data Karyawan") || ss.getSheetByName("Data Karyawan");
+  }
+  if (sheet) ss.setActiveSheet(sheet);
 }
 
 /**
@@ -275,6 +289,197 @@ function setupTabFilterDanPencarian() {
   sheet.setColumnWidth(10, 130);
 
   sheet.setFrozenRows(6);
+}
+
+/**
+ * Membuat atau memperbarui tab khusus '👥 Data Karyawan' dengan:
+ * 1. Kolom Input Nama Lengkap & Dropdown 14 Departemen Resmi (Kolom B & C)
+ * 2. Monitoring Performa Individu Real-time (Total Hadir, Tepat Waktu, Terlambat, % On-Time, Status)
+ * 3. Tabel Ringkasan Monitoring Performa 14 Divisi Real-time (Kolom J - N)
+ */
+function setupTabDataKaryawan() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("👥 Data Karyawan");
+  if (!sheet) sheet = ss.getSheetByName("Data Karyawan");
+
+  if (!sheet) {
+    sheet = ss.insertSheet("👥 Data Karyawan", 2);
+  }
+  sheet.setTabColor("#10b981");
+
+  // Pastikan jumlah baris minimal 200 baris
+  if (sheet.getMaxRows() < 200) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), 200 - sheet.getMaxRows());
+  }
+
+  // Header Banner Atas (Baris 1)
+  sheet.getRange("A1:H1").merge()
+    .setValue("👥 MASTER DATA KARYAWAN & MONITORING PERFORMA INDIVIDU")
+    .setBackground("#0f172a")
+    .setFontColor("#38bdf8")
+    .setFontSize(12)
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle");
+
+  sheet.getRange("J1:N1").merge()
+    .setValue("🏢 MONITORING PERFORMA DIVISI (REAL-TIME)")
+    .setBackground("#065f46")
+    .setFontColor("#ffffff")
+    .setFontSize(12)
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle");
+  sheet.setRowHeight(1, 38);
+
+  // Header Tabel Individu (Baris 2)
+  const headersIndividu = [
+    "No", "Nama Lengkap Karyawan", "Departemen / Divisi", 
+    "Total Hadir", "Tepat Waktu", "Terlambat", 
+    "% On-Time", "Status Performa"
+  ];
+  sheet.getRange("A2:H2").setValues([headersIndividu])
+    .setBackground("#1e293b")
+    .setFontColor("#ffffff")
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle");
+
+  // Header Tabel Ringkasan Divisi (Baris 2)
+  const headersDivisi = [
+    "Departemen (14 Divisi)", "Jml Karyawan", "Total Hadir", "Tepat Waktu", "% On-Time Divisi"
+  ];
+  sheet.getRange("J2:N2").setValues([headersDivisi])
+    .setBackground("#047857")
+    .setFontColor("#ffffff")
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle");
+  sheet.setRowHeight(2, 32);
+
+  // 1. Validasi Dropdown Departemen (Kolom C) - 14 Departemen Resmi
+  const ruleDept = SpreadsheetApp.newDataValidation()
+    .requireValueInList(DEPARTEMEN_LIST, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange("C3:C200").setDataValidation(ruleDept);
+
+  // 2. Set Formula Otomatis untuk Tabel Individu (Baris 3 s/d 200)
+  const indFormulas = [];
+  for (let r = 3; r <= 200; r++) {
+    indFormulas.push([
+      `=IF(ISBLANK(B${r}); ""; ROW()-2)`,
+      `=IF(ISBLANK(B${r}); ""; COUNTIFS('Log Absensi'!D:D; B${r}))`,
+      `=IF(ISBLANK(B${r}); ""; COUNTIFS('Log Absensi'!D:D; B${r}; 'Log Absensi'!I:I; "TEPAT WAKTU"))`,
+      `=IF(ISBLANK(B${r}); ""; COUNTIFS('Log Absensi'!D:D; B${r}; 'Log Absensi'!I:I; "TERLAMBAT"))`,
+      `=IF(ISBLANK(B${r}); ""; IFERROR(IF(D${r}>0; E${r}/D${r}; 0); 0))`,
+      `=IF(ISBLANK(B${r}); ""; IF(D${r}=0; "Belum Hadir"; IF(G${r}>=0.85; "⭐ Sangat Baik"; IF(G${r}>=0.7; "👍 Baik"; "⚠️ Perlu Ditingkatkan"))))`
+    ]);
+  }
+  sheet.getRange("A3:A200").setFormulas(indFormulas.map(f => [f[0]]));
+  sheet.getRange("D3:H200").setFormulas(indFormulas.map(f => f.slice(1)));
+
+  // Format Angka & Align Individu
+  sheet.getRange("A3:A200").setHorizontalAlignment("center");
+  sheet.getRange("D3:F200").setHorizontalAlignment("center");
+  sheet.getRange("G3:G200").setNumberFormat("0.0%").setHorizontalAlignment("center").setFontWeight("bold");
+  sheet.getRange("H3:H200").setHorizontalAlignment("center");
+
+  // 3. Set Formula Otomatis untuk Tabel Ringkasan Divisi (Baris 3 s/d 16: 14 Departemen)
+  const divRows = [];
+  for (let i = 0; i < DEPARTEMEN_LIST.length; i++) {
+    const deptName = DEPARTEMEN_LIST[i];
+    const r = 3 + i;
+    divRows.push([
+      deptName,
+      `=COUNTIF($C$3:$C$200; "${deptName}")`,
+      `=COUNTIFS('Log Absensi'!E:E; "${deptName}")`,
+      `=COUNTIFS('Log Absensi'!E:E; "${deptName}"; 'Log Absensi'!I:I; "TEPAT WAKTU")`,
+      `=IFERROR(IF(L${r}>0; M${r}/L${r}; 0); 0)`
+    ]);
+  }
+  sheet.getRange("J3:N16").setValues(divRows.map(row => [row[0], "", "", "", ""]));
+  sheet.getRange("K3:N16").setFormulas(divRows.map(row => row.slice(1)));
+  sheet.getRange("J3:J16").setFontWeight("bold");
+  sheet.getRange("K3:M16").setHorizontalAlignment("center");
+  sheet.getRange("N3:N16").setNumberFormat("0.0%").setHorizontalAlignment("center").setFontWeight("bold");
+
+  // Total Keseluruhan Divisi (Baris 17)
+  sheet.getRange("J17").setValue("TOTAL KESELURUHAN").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.getRange("K17").setFormula("=SUM(K3:K16)").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.getRange("L17").setFormula("=SUM(L3:L16)").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.getRange("M17").setFormula("=SUM(M3:M16)").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.getRange("N17").setFormula("=IFERROR(IF(L17>0; M17/L17; 0); 0)").setNumberFormat("0.0%").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.getRange("J17:N17").setBackground("#f1f5f9").setBorder(true, true, true, true, true, true, "#94a3b8", SpreadsheetApp.BorderStyle.SOLID);
+  sheet.getRange("J2:N16").setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
+
+  // 4. Auto-populate nama unik awal dari 'Log Absensi' jika kolom B baris 3 masih kosong
+  if (sheet.getRange("B3").getValue() === "") {
+    const sheetLog = ss.getSheetByName("Log Absensi");
+    if (sheetLog && sheetLog.getLastRow() > 1) {
+      const logData = sheetLog.getRange(2, 4, sheetLog.getLastRow() - 1, 2).getValues();
+      const seen = new Map();
+      logData.forEach(row => {
+        const rawN = String(row[0] || '').trim();
+        const rawD = String(row[1] || '').trim();
+        if (rawN && rawN !== "Tanpa Nama" && !seen.has(rawN.toLowerCase())) {
+          let matchedDept = DEPARTEMEN_LIST.find(d => d.toLowerCase() === rawD.toLowerCase()) || DEPARTEMEN_LIST[0];
+          seen.set(rawN.toLowerCase(), { name: rawN, dept: matchedDept });
+        }
+      });
+      const initialList = Array.from(seen.values());
+      if (initialList.length > 0) {
+        const rowsToSet = initialList.slice(0, 195).map(item => [item.name, item.dept]);
+        sheet.getRange(3, 2, rowsToSet.length, 2).setValues(rowsToSet);
+      }
+    }
+  }
+
+  // 5. Atur Lebar Kolom
+  sheet.setColumnWidth(1, 45);   // No
+  sheet.setColumnWidth(2, 230);  // Nama Karyawan
+  sheet.setColumnWidth(3, 190);  // Departemen Dropdown
+  sheet.setColumnWidth(4, 95);   // Total Hadir
+  sheet.setColumnWidth(5, 95);   // Tepat Waktu
+  sheet.setColumnWidth(6, 95);   // Terlambat
+  sheet.setColumnWidth(7, 100);  // % On-Time
+  sheet.setColumnWidth(8, 140);  // Status Performa
+  sheet.setColumnWidth(9, 25);   // Pemisah
+  sheet.setColumnWidth(10, 200); // Departemen Divisi
+  sheet.setColumnWidth(11, 100); // Jml Karyawan
+  sheet.setColumnWidth(12, 95);  // Total Hadir
+  sheet.setColumnWidth(13, 95);  // Tepat Waktu
+  sheet.setColumnWidth(14, 120); // % On-Time Divisi
+
+  sheet.setFrozenRows(2);
+  sheet.getRange("A2:H200").setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
+}
+
+/**
+ * Mencari departemen terdaftar berdasarkan nama karyawan dari tab '👥 Data Karyawan'
+ */
+function lookupRegisteredDepartment(name) {
+  if (!name) return null;
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetKaryawan = ss.getSheetByName("👥 Data Karyawan") || ss.getSheetByName("Data Karyawan");
+    if (!sheetKaryawan) return null;
+
+    const lastRow = sheetKaryawan.getLastRow();
+    if (lastRow < 3) return null;
+
+    const data = sheetKaryawan.getRange(3, 2, lastRow - 2, 2).getValues(); // Col B (Nama), Col C (Dept)
+    const cleanTarget = String(name).trim().toLowerCase();
+
+    for (let row of data) {
+      const empName = String(row[0] || '').trim().toLowerCase();
+      const empDept = String(row[1] || '').trim();
+      if (empName === cleanTarget && empDept && empDept !== "Umum") {
+        return empDept;
+      }
+    }
+  } catch(e) {}
+  return null;
 }
 
 /**
@@ -930,6 +1135,9 @@ function setupSistemAbsensiOtomatis() {
     // Buat / Update tab khusus Pencarian & Filter dengan Kalender dan Dropdown Departemen
     setupTabFilterDanPencarian();
 
+    // Buat / Update tab khusus Master Data Karyawan dengan Dropdown 14 Departemen & Monitoring
+    setupTabDataKaryawan();
+
     // Pasang filter otomatis pada tab Log Absensi & Form Responses 1
     pasangFilterDepartemenDanTanggal();
 
@@ -1188,6 +1396,12 @@ function onGoogleFormSubmit(e) {
     dept = e.values.slice(2).find(v => v && String(v).trim() !== '') || "Umum";
   }
 
+  // Jika departemen belum terdeteksi atau masih "Umum", cari dari Master Data Karyawan
+  if (dept === "Umum" || !dept) {
+    const regDept = lookupRegisteredDepartment(nama);
+    if (regDept) dept = regDept;
+  }
+
   const jadwal = getJadwalByDate(dateStr);
   const temaKajian = jadwal ? jadwal.tema : "Makan Bergizi Gratis";
   const namaPemateri = jadwal ? jadwal.pemateri : "Ustadz Ahmad Fauzi, Lc.";
@@ -1319,6 +1533,12 @@ function doPost(e) {
     for (let rawName of participants) {
       const parsed = parseParticipantName(rawName);
       if (!parsed || !parsed.name) continue;
+
+      // Jika departemen belum terdeteksi atau masih "Umum", cari dari Master Data Karyawan
+      if (!parsed.department || parsed.department === "Umum") {
+        const regDept = lookupRegisteredDepartment(parsed.name);
+        if (regDept) parsed.department = regDept;
+      }
 
       const cleanName = parsed.name.toLowerCase().trim();
       const cleanDept = (parsed.department || '').toLowerCase().trim();

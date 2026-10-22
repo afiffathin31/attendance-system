@@ -194,6 +194,78 @@ async function buildWorkbook() {
     row.getCell('onTimeRate').font = { bold: true };
   });
 
+  // --------------------------------------------------------------------------
+  // SHEET 4: Input Data Karyawan (Dropdown 14 Departemen)
+  // --------------------------------------------------------------------------
+  const sheetKaryawan = workbook.addWorksheet('Data Karyawan', {
+    views: [{ showGridLines: true }]
+  });
+
+  sheetKaryawan.columns = [
+    { header: 'No', key: 'no', width: 6 },
+    { header: 'Nama Lengkap Karyawan', key: 'name', width: 28 },
+    { header: 'Departemen / Divisi', key: 'department', width: 25 },
+    { header: 'Total Hadir', key: 'total', width: 14 },
+    { header: 'Tepat Waktu', key: 'onTime', width: 14 },
+    { header: 'Terlambat', key: 'late', width: 14 },
+    { header: '% On-Time', key: 'onTimeRate', width: 16 },
+    { header: 'Status Performa', key: 'status', width: 22 }
+  ];
+
+  // Header Styling
+  sheetKaryawan.getRow(1).eachCell(cell => {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: '0F172A' } // Dark Slate
+    };
+    cell.font = { color: { argb: 'FFFFFF' }, bold: true, size: 11 };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+  });
+  sheetKaryawan.getRow(1).height = 28;
+
+  // Add existing individual records
+  analytics.individuals.forEach((ind, idx) => {
+    const row = sheetKaryawan.addRow({
+      no: idx + 1,
+      name: ind.name,
+      department: ind.department,
+      total: ind.total,
+      onTime: ind.onTime,
+      late: ind.late,
+      onTimeRate: `${ind.onTimeRate}%`,
+      status: ind.onTimeRate >= 85 ? '⭐ Sangat Baik' : (ind.onTimeRate >= 70 ? '👍 Baik' : '⚠️ Perlu Ditingkatkan')
+    });
+    row.height = 22;
+    row.alignment = { vertical: 'middle' };
+    row.getCell('no').alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell('total').alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell('onTime').alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell('late').alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell('onTimeRate').alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell('status').alignment = { vertical: 'middle', horizontal: 'center' };
+
+    const rateCell = row.getCell('onTimeRate');
+    if (ind.onTimeRate >= 80) {
+      rateCell.font = { bold: true, color: { argb: '047857' } };
+    } else {
+      rateCell.font = { bold: true, color: { argb: 'B91C1C' } };
+    }
+  });
+
+  // Data Validation Dropdown for Column C (Departemen) - 14 Departemen Resmi
+  const deptListString = '"' + [
+    'EBS', 'Solution Architect', 'Could Automation', 'Research and innovation',
+    'Infrastructur Analytic', 'FAT', 'Sales', 'Cyber Cecurity', 'PMO', 'BOD',
+    'Modern Application', 'Data Analytics', 'HCMC', 'PKL/Magang'
+  ].join(',') + '"';
+
+  sheetKaryawan.dataValidations.add('C2:C500', {
+    type: 'list',
+    allowBlank: true,
+    formulae: [deptListString]
+  });
+
   return workbook;
 }
 
